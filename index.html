@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operant Conditioning Punctuality Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e2e8f0;
+        }
+        .container {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center p-4">
+    <div class="container bg-white rounded-2xl shadow-xl max-w-4xl w-full p-8 md:p-12 space-y-8">
+        <div class="text-center">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800">Punctuality Simulation</h1>
+            <p class="mt-2 text-lg text-gray-500">
+                A game based on B.F. Skinner's Operant Conditioning theory.
+            </p>
+        </div>
+
+        <div id="start-screen" class="space-y-4 text-center">
+            <p class="text-lg text-gray-700">Please enter your name to begin the simulation.</p>
+            <input type="text" id="player-name-input" placeholder="Your Name" class="w-full max-w-sm px-4 py-2 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button id="start-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                Start Simulation
+            </button>
+        </div>
+
+        <div id="game-container" class="space-y-6 hidden">
+            <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-lg" role="alert">
+                <p id="instructions-header" class="font-bold">Instructions</p>
+                <p class="text-sm">Click "Arrive on Time" or "Arrive Late" to simulate your behavior. The supervisor's actions will change based on your choices. Observe the consequences! The simulation ends after 5 consecutive on-time arrivals.</p>
+            </div>
+
+            <div id="game-area" class="space-y-6">
+                <!-- Current Status Section -->
+                <div class="flex flex-col md:flex-row justify-between items-center bg-gray-50 p-6 rounded-xl shadow-inner">
+                    <div class="text-center md:text-left">
+                        <p class="text-lg font-semibold text-gray-600">Punctuality Streak</p>
+                        <p id="punctuality-streak" class="text-5xl font-bold mt-1 text-green-600 transition-colors duration-300">0</p>
+                    </div>
+                    <div class="text-center mt-4 md:mt-0">
+                        <p class="text-lg font-semibold text-gray-600">Punishment Level</p>
+                        <p id="punishment-level" class="text-5xl font-bold mt-1 text-red-600 transition-colors duration-300">0</p>
+                    </div>
+                </div>
+
+                <!-- New Meters for Stress and Motivation -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
+                        <p class="text-lg font-semibold text-gray-600 text-center">Stress</p>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+                            <div id="stress-meter" class="bg-red-500 h-4 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
+                        <p class="text-lg font-semibold text-gray-600 text-center">Motivation</p>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+                            <div id="motivation-meter" class="bg-green-500 h-4 rounded-full transition-all duration-500" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Supervisor's Action & Message Box -->
+                <div class="bg-gray-800 text-white p-6 rounded-xl shadow-md space-y-4 text-center">
+                    <p class="font-bold text-lg md:text-xl">Supervisor's Action</p>
+                    <div id="supervisor-message" class="text-lg md:text-2xl font-light text-yellow-300 min-h-[4rem]">
+                        Waiting for your first day...
+                    </div>
+                    <div id="consequences-message" class="text-sm font-normal text-gray-300 mt-2 min-h-[2rem]"></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div id="action-buttons" class="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                    <button id="on-time-btn" class="flex-1 w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                        Arrive on Time
+                    </button>
+                    <button id="late-btn" class="flex-1 w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                        Arrive Late
+                    </button>
+                </div>
+                
+                <!-- Reset Button & End Game Message -->
+                <div class="text-center pt-4">
+                    <button id="reset-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-full transition-all duration-300">
+                        Reset Simulation
+                    </button>
+                    <div id="end-message" class="mt-4 text-xl font-bold text-green-700 hidden">
+                        <p>Congratulations! You have successfully completed the simulation!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game State Variables ---
+        let punctualityStreak = 0;
+        let punishmentLevel = 0;
+        let stress = 0; // 0 to 100
+        let motivation = 100; // 0 to 100
+        let isSimulationOver = false;
+        let supervisorAction = '';
+        let consequencesMessage = '';
+        let playerName = '';
+
+        // --- DOM Elements ---
+        const startScreenEl = document.getElementById('start-screen');
+        const playerNameInput = document.getElementById('player-name-input');
+        const startBtn = document.getElementById('start-btn');
+        const gameContainerEl = document.getElementById('game-container');
+        const instructionsHeaderEl = document.getElementById('instructions-header');
+
+        const onTimeBtn = document.getElementById('on-time-btn');
+        const lateBtn = document.getElementById('late-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const punctualityStreakEl = document.getElementById('punctuality-streak');
+        const punishmentLevelEl = document.getElementById('punishment-level');
+        const stressMeterEl = document.getElementById('stress-meter');
+        const motivationMeterEl = document.getElementById('motivation-meter');
+        const supervisorMessageEl = document.getElementById('supervisor-message');
+        const consequencesMessageEl = document.getElementById('consequences-message');
+        const actionButtonsEl = document.getElementById('action-buttons');
+        const endMessageEl = document.getElementById('end-message');
+
+        // --- Helper Function to Update UI ---
+        function updateUI() {
+            punctualityStreakEl.textContent = punctualityStreak;
+            punishmentLevelEl.textContent = punishmentLevel;
+            supervisorMessageEl.textContent = supervisorAction;
+            consequencesMessageEl.textContent = consequencesMessage;
+
+            // Update meters
+            stressMeterEl.style.width = stress + '%';
+            motivationMeterEl.style.width = motivation + '%';
+
+            // Update colors based on levels
+            if (punctualityStreak > 0) {
+                punctualityStreakEl.classList.remove('text-gray-400', 'text-yellow-600', 'text-green-600');
+                if (punctualityStreak >= 5) {
+                    punctualityStreakEl.classList.add('text-green-600');
+                } else if (punctualityStreak >= 3) {
+                    punctualityStreakEl.classList.add('text-yellow-600');
+                } else {
+                    punctualityStreakEl.classList.add('text-gray-400');
+                }
+            } else {
+                 punctualityStreakEl.classList.add('text-gray-400');
+            }
+
+            if (punishmentLevel > 0) {
+                 punishmentLevelEl.classList.remove('text-gray-400', 'text-orange-500', 'text-red-600');
+                 if (punishmentLevel >= 3) {
+                     punishmentLevelEl.classList.add('text-red-600');
+                 } else {
+                     punishmentLevelEl.classList.add('text-orange-500');
+                 }
+            } else {
+                punishmentLevelEl.classList.add('text-gray-400');
+            }
+
+            // End simulation logic
+            if (punctualityStreak >= 5) {
+                endSimulation();
+            }
+        }
+
+        // --- Core Game Logic ---
+        function handlePunctuality(isLate) {
+            if (isSimulationOver) return;
+
+            if (isLate) {
+                // Scenario 1: Punishment and Extinction
+                punishmentLevel++;
+                punctualityStreak = 0;
+                stress = Math.min(100, stress + 20);
+                motivation = Math.max(0, motivation - 20);
+
+                supervisorAction = "Reprimand and harass employees.";
+                
+                // Potential negative consequences from the second diagram
+                const negativeConsequences = [
+                    "Increased absenteeism",
+                    "Apathetic performance",
+                    "Fear of manager",
+                    "Disruptive behavior"
+                ];
+                consequencesMessage = "Consequence: " + negativeConsequences[Math.floor(Math.random() * negativeConsequences.length)];
+
+            } else {
+                // Scenario 2: Positive Reinforcement and Avoidance Learning
+                punctualityStreak++;
+                punishmentLevel = Math.max(0, punishmentLevel - 1);
+                stress = Math.max(0, stress - 10);
+                motivation = Math.min(100, motivation + 15);
+
+                if (punctualityStreak >= 3) {
+                    supervisorAction = "Praise employees and recommend merit pay increases.";
+                    consequencesMessage = "You've earned a commendation!";
+                } else {
+                    supervisorAction = "Avoid harassing or reprimanding employees.";
+                    consequencesMessage = "You've avoided a negative consequence.";
+                }
+            }
+            updateUI();
+        }
+
+        function endSimulation() {
+            isSimulationOver = true;
+            actionButtonsEl.classList.add('hidden');
+            endMessageEl.classList.remove('hidden');
+            supervisorMessageEl.textContent = "Simulation Complete!";
+            consequencesMessageEl.textContent = "Your consistent behavior was positively reinforced. Behavior change successful!";
+        }
+
+        function resetGame() {
+            isSimulationOver = false;
+            punctualityStreak = 0;
+            punishmentLevel = 0;
+            stress = 0;
+            motivation = 100;
+            supervisorAction = "Waiting for your first day...";
+            consequencesMessage = "";
+            actionButtonsEl.classList.remove('hidden');
+            endMessageEl.classList.add('hidden');
+            updateUI();
+        }
+
+        function startGame() {
+            playerName = playerNameInput.value.trim();
+            if (playerName) {
+                startScreenEl.classList.add('hidden');
+                gameContainerEl.classList.remove('hidden');
+                instructionsHeaderEl.textContent = `Instructions for ${playerName}`;
+                resetGame();
+            }
+        }
+
+        // --- Event Listeners ---
+        onTimeBtn.addEventListener('click', () => handlePunctuality(false));
+        lateBtn.addEventListener('click', () => handlePunctuality(true));
+        resetBtn.addEventListener('click', resetGame);
+        startBtn.addEventListener('click', startGame);
+
+        playerNameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                startGame();
+            }
+        });
+    </script>
+</body>
+</html>
